@@ -565,12 +565,23 @@ export class ChaiForm extends LitElement {
       submit_url: submitUrl,
       visitorId: visitorId
     });
-    this.submitted = true;
 
 
     console.info('Initiating submit via navigation', submitUrl, visitorId, this.formInstanceId);
 
-    window.open(submitUrl, '_blank');
+
+    if (posthog.isFeatureEnabled('submit-without-survey') ) {
+      fetch(submitUrl, {method: 'GET', redirect: 'manual'}).then((response) => {
+        console.info('Submit successful', response, visitorId, this.formInstanceId);
+        this.submitted = true;
+      }).catch((error) => {
+        console.error('Submit failed', error, visitorId, this.formInstanceId);
+        posthog.capture('form:submit_button_error', {chai_exception: error, flow_type: this.flowType});
+      });
+    } else {
+      this.submitted = true;
+      window.open(submitUrl, '_blank');
+    }
   }
 
   private getFieldsInCurrentSlot() {
